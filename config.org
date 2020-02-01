@@ -1,0 +1,169 @@
+#+TITLE: EMACS CONFIGURATION FILE
+#+AUTHOR: Bryson Tanner
+
+* Load the package manager and necessary repositories
+#+BEGIN_SRC emacs-lisp
+  (setq package-archives '(("gnu" . "https://elpa.gnu.org/packages/")))
+  (add-to-list 'package-archives '("marmalade" . "https://marmalade-repo.org/packages/"))
+  (let* ((no-ssl (and (memq system-type '(windows-nt ms-dos))
+					  (not (gnutls-available-p))))
+		 (proto (if no-ssl "http" "https")))
+	(add-to-list 'package-archives (cons "melpa" (concat proto "://melpa.org/packages/")) t)
+	(when (< emacs-major-version 24)
+	  ;; For important compatibility libraries like cl-lib
+	  (add-to-list 'package-archives (cons "gnu" (concat proto "://elpa.gnu.org/packages/")))))
+  (package-initialize)
+  (require 'req-package)
+#+END_SRC
+* Custom-set-variables _DO NOT CHANGE THIS SECTION_
+#+BEGIN_SRC emacs-lisp
+  (custom-set-variables
+    ;; custom-set-variables was added by Custom.
+    ;; If you edit it by hand, you could mess it up, so be careful.
+    ;; Your init file should contain only one such instance.
+    ;; If there is more than one, they won't work right.
+    '(ansi-color-faces-vector
+      [default default default italic underline success warning error])
+    '(ansi-color-names-vector
+      ["#2d3743" "#ff4242" "#74af68" "#dbdb95" "#34cae2" "#008b8b" "#00ede1" "#e1e1e0"])
+    '(column-number-mode t)
+    '(custom-enabled-themes (quote (black-space)))
+    '(custom-safe-themes
+      (quote
+       ("c1a4945b4ac0f7675d02a8fdd7148ec89158552880258aea453e452c0794a40d" "dd2464a3076cdcdb94cd28b4fecd39a36bbb02d5b8c46bfbe5ba4bbef827a1d5" "7803ff416cf090613afd3b4c3de362e64063603522d4974bcae8cfa53cf1fd1b" "6bc387a588201caf31151205e4e468f382ecc0b888bac98b2b525006f7cb3307" "874919946f79de5bba4d5e02692081c93b201b55cd11e000542837816b439ea7" "e901f32f0b7f0ce702ba2e551040bcb9666fb63733f64dd6e406f752be793f27" "af949f118b83a3761a1a5ec432f9b011a5fa256c3f50cfaf146314f9290cc2c3" "3677ef0df61d83b99ceaa90da4ff76b9682589b944acbd9032d91c64e82e6e94" default)))
+    '(package-selected-packages
+      (quote
+       (diminish yasnippet-snippets spacemacs-theme restart-emacs req-package powerline package-build modern-cpp-font-lock jedi helm-core git flycheck-rtags fill-column-indicator fic-ext-mode el-get cyberpunk-theme cyberpunk-2019-theme cppcheck company-rtags company-jedi company-irony commander cmake-font-lock arduino-mode ansi))))
+    (custom-set-faces
+      ;; custom-set-faces was added by Custom.
+      ;; If you edit it by hand, you could mess it up, so be careful.
+      ;; Your init file should contain only one such instance.
+      ;; If there is more than one, they won't work right.
+      )
+#+END_SRC
+* General Configurantion
+** Disable Backup files
+#+BEGIN_SRC emacs-lisp
+  (setq backup-inhibited t)
+#+END_SRC
+** Window Appearance Customizations
+#+BEGIN_SRC emacs-lisp
+  ;; General window appearance
+  (scroll-bar-mode -1)
+  (menu-bar-mode -1)
+  (tool-bar-mode -1)
+  (add-hook 'window-setup-hook 'toggle-frame-maximized t)
+  ;; Powerline
+   '(powerline-active0 (t (:inherit mode-line :background "blue1" :foreground "SystemWindow")))
+   '(powerline-active1 (t (:inherit mode-line :background "medium violet red" :foreground "white")))
+   '(powerline-active2 (t (:inherit mode-line :background "black" :foreground "white")))
+  (require 'powerline)
+  (powerline-default-theme)
+  ;; Splash screen appearance 
+  (defun splash-screen-conditional()
+    "Open startup screen instead of *scratch* buffer."
+    (when (and (string-equal "*scratch*" (buffer-name)) (not (buffer-file-name)))
+            (display-splash-screen))
+    )
+  (add-hook 'after-init-hook 'splash-screen-conditional)
+#+END_SRC
+** Set the Default Dired Directory
+#+BEGIN_SRC emacs-lisp
+  (cd "~/source/repos/")
+#+END_SRC
+** Productivity Customizations
+#+BEGIN_SRC emacs-lisp
+  ;; Custom Keybindings
+  (global-set-key (kbd "C-x p") '(lambda()
+				   (interactive)
+				   (other-window -1)))
+  ;; enable ido
+  (require 'ido)
+  (ido-mode t)
+
+  ;; enable yasnippet
+  (require 'yasnippet)
+  (yas-global-mode 1)
+
+  ;; show line numbers
+  (linum-mode t)
+#+END_SRC
+* Org Mode Configurantion
+** Buffer Appearance
+#+BEGIN_SRC emacs-lisp
+  ;; show line numbers
+  (add-hook 'org-mode-hook 'linum-mode)
+#+END_SRC 
+* Programming Configuration
+** General Programming Configuration
+#+BEGIN_SRC emacs-lisp
+  ;; show parenthesis and line numbers and use a ruler at 80 columns
+  (add-hook 'prog-mode-hook 'show-paren-mode)
+  (setq fci-rule-color "#ff0000")
+  (setq fci-rule-width 1)
+  (setq fci-rule-use-dashes 0.5)
+  (add-hook 'prog-mode-hook 'fci-mode)
+  (add-hook 'prog-mode-hook 'linum-mode)
+  (add-hook 'prog-mode-hook (lambda() (set-fill-column 80)))
+
+  ;; FIC mode to find TODO, FIXME, BUG, and KLUDGE
+  (req-package fic-mode :require fic-mode :config
+    (progn
+	  (add-hook 'prog-mode-hook 'fic-ext-mode)))
+#+END_SRC
+** C++ Configuration
+#+BEGIN_SRC emacs-lisp
+  (req-package company :config
+    (progn
+	  (add-hook 'after-init-hook 'global-company-mode)
+	  (global-set-key (kbd "M-/") 'company-complete-common-or-cycle)
+	  (setq company-idle-delay 0)))
+  (req-package flycheck :config
+    (progn
+	  (global-flycheck-mode)))
+  (req-package modern-cpp-font-lock
+    (progn
+    (add-hook 'c++-mode-hook #'modern-c++-font-lock-mode)))
+
+  (add-hook 'c++-mode-hook (lambda() (setq-default tab-width 2 indent-tabs-mode nil)))
+  (add-hook 'c-mode-hook (lambda() (setq-default tab-width 2 indent-tabs-mode nil)))
+#+END_SRC
+** CMAKE configuration
+#+BEGIN_SRC emacs-lisp
+  (req-package cmake-mode :require cmake-mode)
+  (autoload 'cmake-font-lock-activate "cmake-font-lock" nil t)
+  (add-hook 'cmake-mode-hook 'cmake-font-lock-activate)
+#+END_SRC
+** Python Congfiguration
+#+BEGIN_SRC emacs-lisp
+  (req-package company-jedi :require company-jedi :config
+    (progn
+	  (defun my-python-mode-hook()
+	    (add-to-list 'company-backends 'company-jedi))
+	  (add-hook 'python-mode-hook 'my-python-mode-hook)))
+  (add-hook 'python-mode-hook (lambda() 
+                                (set-fill-column 80)))
+  (add-hook 'python-mode-hook (lambda() 
+                                (setq-default tab-width 4 indent-tabs-mode nil)))
+#+END_SRC
+
+** Cladder setup
+#+BEGIN_SRC emacs-lisp
+  ;; custom packages for testing purposes
+  (add-to-list 'load-path "~/.emacs.d/custom/")
+  (require 'cladder)
+#+END_SRC
+
+* Custom File Extension-Major Modes
+#+BEGIN_SRC emacs-lisp
+  (add-to-list 'auto-mode-alist '("\\.cpp\\'" . c++-mode))
+  (add-to-list 'auto-mode-alist '("\\.h\\'" . c++-mode))
+  (add-to-list 'auto-mode-alist '("\\.hpp\\'" . c++-mode))
+  (add-to-list 'auto-mode-alist '("\\.c\\'" . c-mode))
+  (add-to-list 'auto-mode-alist '("\\.py\\'" . python-mode))
+#+END_SRC
+* Close the Package Manager
+#+BEGIN_SRC emacs-lisp
+  (req-package-finish)
+#+END_SRC
+
